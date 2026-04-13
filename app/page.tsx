@@ -1,4 +1,5 @@
 import { Timeline, type TimelineItem } from "@/components/timeline";
+import { Card, CardContent } from "@/components/ui/card";
 import type { ReactNode } from "react";
 
 // ─── Datasets ────────────────────────────────────────────────────────────────
@@ -246,7 +247,7 @@ export default function Page() {
         {/* ─── Props reference ──────────────────────────────────────── */}
         <section className="space-y-6">
           <SectionLabel label="api reference" title="Props" />
-          <div className="rounded-2xl border border-border overflow-hidden">
+          <Card className="overflow-hidden p-0">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
@@ -271,7 +272,7 @@ export default function Page() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         </section>
 
         {/* ─── Footer ───────────────────────────────────────────────── */}
@@ -316,10 +317,12 @@ function Demo({
         {code}
       </pre>
 
-      {/* Live component */}
-      <div className="rounded-2xl border border-border bg-card p-6 sm:p-10">
-        {children}
-      </div>
+      {/* Live component — overflow-visible so sticky icons aren't clipped */}
+      <Card className="overflow-visible">
+        <CardContent className="px-6 sm:px-10 py-6 sm:py-10">
+          {children}
+        </CardContent>
+      </Card>
     </section>
   );
 }

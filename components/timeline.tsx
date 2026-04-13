@@ -2,6 +2,7 @@
 
 import { motion, useScroll } from "motion/react";
 import { useRef, type CSSProperties, type ReactNode } from "react";
+import { Badge } from "@/components/ui/badge";
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -273,12 +274,7 @@ function TimelineRow({
         {item.tags && item.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
             {item.tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-block px-2 py-0.5 font-mono text-[0.6rem] rounded border border-border bg-muted text-muted-foreground"
-              >
-                {tag}
-              </span>
+              <Badge key={tag} variant="outline">{tag}</Badge>
             ))}
           </div>
         )}
