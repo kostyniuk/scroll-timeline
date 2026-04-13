@@ -1,16 +1,5 @@
 "use client";
 
-/**
- * Scroll Timeline
- *
- * A scroll-driven timeline with a two-color axis:
- *  - coveredColor   → the portion already scrolled past
- *  - uncoveredColor → the portion not yet reached
- *
- * Optionally pins icons with CSS `position: sticky` so the current
- * item's icon stays visible while you read through its content.
- */
-
 import { motion, useScroll } from "motion/react";
 import { useRef, type CSSProperties, type ReactNode } from "react";
 
@@ -27,7 +16,7 @@ export type TimelineItem = {
   subtitle?: string;
   /** Longer body text */
   description?: string;
-  /** Icon rendered inside the circular indicator */
+  /** Icon rendered inside the circular indicator. Ignored when dot={true}. */
   icon?: ReactNode;
   /** Small pill tags rendered below the description */
   tags?: string[];
@@ -43,6 +32,12 @@ export type TimelineProps = {
    * @default true
    */
   sticky?: boolean;
+  /**
+   * Render a small dot on the axis instead of a full icon circle.
+   * Useful for minimal / event-style timelines with no icons.
+   * @default false
+   */
+  dot?: boolean;
   /**
    * CSS color for the axis segment that has already been scrolled past.
    * Accepts any valid CSS color — hex, hsl(), oklch(), currentColor, etc.
@@ -66,7 +61,8 @@ export type TimelineProps = {
    */
   stickyOffset?: number;
   /**
-   * Diameter of the icon circle in pixels.
+   * Diameter of the icon circle in pixels. Also sets the column width
+   * so the axis stays centered regardless of size.
    * @default 24
    */
   iconSize?: number;
@@ -78,6 +74,7 @@ export type TimelineProps = {
 export function Timeline({
   items,
   sticky = true,
+  dot = false,
   coveredColor = "currentColor",
   uncoveredColor,
   lineWidth = 2,
@@ -87,18 +84,21 @@ export function Timeline({
 }: TimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // scrollYProgress: 0 when the container top reaches stickyOffset,
-  //                  1 when the container bottom reaches stickyOffset.
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: [`start ${stickyOffset}px`, `end ${stickyOffset}px`],
   });
 
-  // The axis is centered on the icon column (iconSize / 2 from left).
+  // Center the axis on the icon column.
   const axisLeft = iconSize / 2;
 
-  // Shared positioning for both axis layers.
-  const axisStyle: CSSProperties = {
+  const resolvedUncoveredColor =
+    uncoveredColor ??
+    `color-mix(in srgb, ${coveredColor} 18%, transparent)`;
+
+  // Shared absolute positioning — layout done via inline styles,
+  // not Tailwind, so it works regardless of content scanning.
+  const axisBase: CSSProperties = {
     position: "absolute",
     top: 0,
     left: axisLeft,
@@ -108,33 +108,31 @@ export function Timeline({
     borderRadius: 9999,
   };
 
-  // Fall back to a translucent tint of coveredColor when uncoveredColor
-  // is not specified. color-mix() is supported in all modern browsers.
-  const resolvedUncoveredColor =
-    uncoveredColor ??
-    `color-mix(in srgb, ${coveredColor} 18%, transparent)`;
-
   return (
     <div
       ref={containerRef}
-      className={`relative flex flex-col${className ? ` ${className}` : ""}`}
+      // Critical layout via inline styles — Tailwind scanning is unreliable
+      // for files outside `app/` depending on the project setup.
+      style={{ position: "relative", display: "flex", flexDirection: "column" }}
+      className={className}
     >
       {/* Layer 1 — uncovered axis (always full height) */}
-      <div
-        style={{ ...axisStyle, backgroundColor: resolvedUncoveredColor }}
-      />
+      <div style={{ ...axisBase, backgroundColor: resolvedUncoveredColor }} />
 
-      {/* Layer 2 — covered axis (grows from top as you scroll) */}
+      {/* Layer 2 — covered axis (grows from the top as you scroll) */}
       <motion.div
         style={{
-          ...axisStyle,
-          // Use motion's x instead of CSS transform so it composes
-          // correctly with scaleY without overwriting the transform.
-          x: "-50%",
-          transform: undefined, // let motion own the transform
+          position: "absolute",
+          top: 0,
+          left: axisLeft,
+          width: lineWidth,
+          height: "100%",
+          borderRadius: 9999,
           backgroundColor: coveredColor,
+          // Use motion's x so it composes correctly with scaleY.
+          x: "-50%",
           scaleY: scrollYProgress,
-          originY: 0, // scale from the top edge
+          originY: 0,
         }}
       />
 
@@ -143,6 +141,7 @@ export function Timeline({
           key={item.id ?? index}
           item={item}
           sticky={sticky}
+          dot={dot}
           stickyOffset={stickyOffset}
           iconSize={iconSize}
           coveredColor={coveredColor}
@@ -153,11 +152,12 @@ export function Timeline({
   );
 }
 
-// ─── TimelineRow (internal) ───────────────────────────────────────────────────
+// ─── TimelineRow ─────────────────────────────────────────────────────────────
 
 type TimelineRowProps = {
   item: TimelineItem;
   sticky: boolean;
+  dot: boolean;
   stickyOffset: number;
   iconSize: number;
   coveredColor: string;
@@ -167,41 +167,81 @@ type TimelineRowProps = {
 function TimelineRow({
   item,
   sticky,
+  dot,
   stickyOffset,
   iconSize,
   coveredColor,
   isLast,
 }: TimelineRowProps) {
   return (
-    <div className="flex gap-6 sm:gap-10">
-      {/* ── Icon column ─────────────────────────────────────────────── */}
-      {/*
-       * The wrapper must be at least as tall as the content so the sticky
-       * element has a containing block to stick inside.
-       * flex-shrink-0 prevents the column from collapsing.
-       */}
+    // Inline styles for the row layout — same rationale as the container.
+    <div style={{ display: "flex", gap: "2.5rem" }}>
+
+      {/* ── Indicator column ──────────────────────────────────────── */}
       <div
-        className="relative z-10 flex-shrink-0"
-        style={{ width: iconSize }}
+        style={{
+          width: iconSize,
+          flexShrink: 0,
+          position: "relative",
+          zIndex: 10,
+        }}
       >
-        <div
-          style={{
-            width: iconSize,
-            height: iconSize,
-            backgroundColor: coveredColor,
-            color: "var(--background)",
-            ...(sticky
-              ? { position: "sticky", top: stickyOffset }
-              : { position: "relative" }),
-          }}
-          className="rounded-full flex items-center justify-center text-xs font-bold select-none"
-        >
-          {item.icon}
-        </div>
+        {dot ? (
+          // ── Dot variant ──────────────────────────────────────────
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              // Offset so the dot center aligns with the first text line.
+              paddingTop: iconSize / 2 - 4,
+              ...(sticky
+                ? { position: "sticky", top: stickyOffset }
+                : {}),
+            }}
+          >
+            <div
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                backgroundColor: coveredColor,
+                flexShrink: 0,
+              }}
+            />
+          </div>
+        ) : (
+          // ── Icon circle variant ───────────────────────────────────
+          <div
+            style={{
+              width: iconSize,
+              height: iconSize,
+              backgroundColor: coveredColor,
+              color: "var(--background)",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.75rem",
+              fontWeight: "bold",
+              userSelect: "none",
+              ...(sticky
+                ? { position: "sticky", top: stickyOffset }
+                : { position: "relative" }),
+            }}
+          >
+            {item.icon}
+          </div>
+        )}
       </div>
 
-      {/* ── Content ─────────────────────────────────────────────────── */}
-      <div className={`flex-1 min-w-0 ${isLast ? "pb-0" : "pb-16"}`}>
+      {/* ── Content ───────────────────────────────────────────────── */}
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          paddingBottom: isLast ? 0 : "4rem",
+        }}
+      >
         {item.period && (
           <p className="font-mono text-[0.625rem] tracking-[0.12em] uppercase text-muted-foreground mb-1.5">
             {item.period}
@@ -212,17 +252,14 @@ function TimelineRow({
           <h3 className="text-sm font-semibold leading-snug">{item.title}</h3>
           {item.isCurrent && (
             <span className="inline-flex items-center gap-1 font-mono text-[0.6rem] tracking-wide uppercase text-muted-foreground">
-              <span
-                className="block w-1.5 h-1.5 rounded-full bg-green-500"
-                style={{ animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite" }}
-              />
+              <span className="block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
               now
             </span>
           )}
         </div>
 
         {item.subtitle && (
-          <p className="text-sm font-medium text-foreground/70 mb-1.5">
+          <p className="text-sm font-medium mb-1.5" style={{ color: "color-mix(in srgb, currentColor 70%, transparent)" }}>
             {item.subtitle}
           </p>
         )}
