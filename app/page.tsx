@@ -1,5 +1,6 @@
 import { Timeline, type TimelineItem } from "@/components/timeline";
 import { Card, CardContent } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/theme-toggle";
 import type { ReactNode } from "react";
 
 // ─── Datasets ────────────────────────────────────────────────────────────────
@@ -12,10 +13,26 @@ const CAREER: TimelineItem[] = [
     title: "Engineering Lead",
     subtitle: "NovaSystems",
     isCurrent: true,
+    defaultExpanded: true,
     description:
       "Leading architecture and delivery across frontend modernisation, backend platform work, and performance initiatives. Managing a team of four engineers while staying deeply hands-on in design decisions and code reviews.",
     tags: ["TypeScript", "React", "Node.js", "PostgreSQL", "Tailwind CSS"],
     icon: "N",
+    additionalContent: [
+      {
+        title: "Key Achievements",
+        content: [
+          "Reduced time-to-deploy from 45 minutes to under 8 minutes by redesigning the CI/CD pipeline.",
+          "Led the migration from REST to GraphQL, cutting over-fetching by an estimated 40%.",
+          "Established a design-system working group that standardised component patterns across 3 product squads.",
+        ],
+      },
+      {
+        title: "People & Process",
+        content:
+          "Introduced quarterly engineering health retrospectives and lightweight architecture decision records (ADRs), improving team alignment and reducing repeat discussions on settled decisions.",
+      },
+    ],
   },
   {
     id: "staff",
@@ -26,6 +43,16 @@ const CAREER: TimelineItem[] = [
       "Owned the core data pipeline and drove a full migration from a monolith to a service-oriented architecture. Reduced p99 API latency by 60 % and cut infrastructure costs by consolidating redundant services.",
     tags: ["Go", "gRPC", "Kafka", "Kubernetes", "Terraform"],
     icon: "M",
+    additionalContent: [
+      {
+        title: "Impact",
+        content: [
+          "Reduced p99 API latency from 820 ms to 330 ms after introducing an in-process cache layer.",
+          "Cut monthly infrastructure spend by 22% by right-sizing Kubernetes node pools.",
+          "Authored internal Go style guide adopted by all backend squads.",
+        ],
+      },
+    ],
   },
   {
     id: "senior",
@@ -67,10 +94,22 @@ const RELEASES: TimelineItem[] = [
     title: "v3.0 — Complete Redesign",
     subtitle: "scroll-timeline",
     isCurrent: true,
+    defaultExpanded: true,
     description:
       "Ground-up rewrite with a new API surface, full TypeScript support, Tailwind v4 compatibility, and a motion-powered scroll-driven axis.",
     tags: ["TypeScript", "motion", "Tailwind v4"],
     icon: "3",
+    additionalContent: [
+      {
+        title: "What's new",
+        content: [
+          "New additionalContent prop for collapsible sections per item.",
+          "shadcn/ui components: Item, Collapsible, Badge, Button.",
+          "Dark mode support via next-themes.",
+          "Expanded TypeScript types: TimelineSectionData, defaultExpanded.",
+        ],
+      },
+    ],
   },
   {
     id: "v2",
@@ -113,6 +152,17 @@ const MILESTONES: TimelineItem[] = [
     subtitle: "Zero downtime deploy",
     icon: "🚀",
     isCurrent: true,
+    defaultExpanded: true,
+    additionalContent: [
+      {
+        title: "Launch checklist",
+        content: [
+          "Blue/green deployment with instant rollback.",
+          "Monitoring dashboards and alerting verified.",
+          "CDN cache warm-up completed.",
+        ],
+      },
+    ],
   },
   {
     id: "beta",
@@ -152,14 +202,17 @@ export default function Page() {
             </p>
             <h1 className="text-sm font-semibold leading-tight">Scroll Timeline</h1>
           </div>
-          <a
-            href="https://github.com/kostyniuk/scroll-timeline"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            GitHub →
-          </a>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <a
+              href="https://github.com/kostyniuk/scroll-timeline"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              GitHub →
+            </a>
+          </div>
         </div>
       </header>
 
@@ -246,7 +299,7 @@ export default function Page() {
 
         {/* ─── Props reference ──────────────────────────────────────── */}
         <section className="space-y-6">
-          <SectionLabel label="api reference" title="Props" />
+          <SectionLabel label="api reference" title="Props" description="TimelineProps — passed directly to the Timeline component." />
           <Card className="overflow-hidden p-0">
             <table className="w-full text-sm">
               <thead>
@@ -263,6 +316,34 @@ export default function Page() {
               </thead>
               <tbody className="divide-y divide-border">
                 {PROPS.map((p) => (
+                  <tr key={p.name} className="align-top hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3 font-mono text-xs text-foreground whitespace-nowrap">{p.name}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">{p.type}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">{p.default}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground hidden sm:table-cell leading-relaxed">{p.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+
+          <SectionLabel label="api reference" title="TimelineItem props" description="Per-item shape passed inside the items array." />
+          <Card className="overflow-hidden p-0">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  {["Prop", "Type", "Default", "Description"].map((h) => (
+                    <th
+                      key={h}
+                      className={`text-left font-mono text-[0.65rem] px-4 py-3 text-muted-foreground font-normal${h === "Description" ? " hidden sm:table-cell" : ""}`}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {ITEM_PROPS.map((p) => (
                   <tr key={p.name} className="align-top hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-foreground whitespace-nowrap">{p.name}</td>
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">{p.type}</td>
@@ -361,4 +442,19 @@ const PROPS = [
   { name: "stickyOffset", type: "number", default: "80", description: "Distance in px from the viewport top where icons stick. Match this to your sticky header height." },
   { name: "iconSize", type: "number", default: "24", description: "Diameter of the icon circle in pixels. The axis auto-centers on the icon column." },
   { name: "className", type: "string", default: "—", description: "Extra class names applied to the timeline root element." },
+];
+
+// ─── Per-item props (shown below the main table) ──────────────────────────────
+
+const ITEM_PROPS = [
+  { name: "title", type: "string", default: "—", description: "Primary heading for the entry. Required." },
+  { name: "id", type: "string | number", default: "index", description: "Unique key. Falls back to array index." },
+  { name: "period", type: "string", default: "—", description: "Date or date-range label rendered in monospace above the title." },
+  { name: "subtitle", type: "string", default: "—", description: "Secondary line below the title (e.g. company name or location)." },
+  { name: "description", type: "string", default: "—", description: "Longer body text rendered below the subtitle." },
+  { name: "icon", type: "ReactNode", default: "—", description: "Content rendered inside the icon circle. Ignored when dot={true}." },
+  { name: "tags", type: "string[]", default: "—", description: "Pill tags rendered at the bottom of the entry." },
+  { name: "isCurrent", type: "boolean", default: "false", description: "Shows a live (pulsing) indicator badge next to the title." },
+  { name: "additionalContent", type: "TimelineSectionData[]", default: "—", description: "Collapsible sections with optional title and string or string[] content. A toggle button appears when provided." },
+  { name: "defaultExpanded", type: "boolean", default: "false", description: "Whether the collapsible content is open on first render." },
 ];

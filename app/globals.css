@@ -85,18 +85,6 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --muted: #18181b;
-    --muted-foreground: #a1a1aa;
-    --border: #27272a;
-    --card: #111113;
-    --primary: #fafafa;
-    --primary-foreground: #18181b;
-    --accent-color: #60a5fa;
-  }
-}
-
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
