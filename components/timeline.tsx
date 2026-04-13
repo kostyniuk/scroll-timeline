@@ -1,7 +1,7 @@
 "use client";
 
-import { motion, useMotionValue, useScroll } from "motion/react";
-import React, { useEffect, useRef, type RefObject, type ReactNode } from "react";
+import { motion, useScroll } from "motion/react";
+import React, { useRef, type RefObject, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Item, ItemContent, ItemTitle, ItemDescription } from "@/components/ui/item";
@@ -152,31 +152,26 @@ export function Timeline({
 }: TimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Viewport mode: useScroll tracks when the timeline container passes
-  // through stickyOffset px from the top — progress matches icon position.
-  const { scrollYProgress: viewportProgress } = useScroll({
-    target: containerRef,
-    offset: [`start ${stickyOffset}px`, `end ${stickyOffset}px`],
-  });
-
-  // Scrollable-container mode: useScroll({ container }) gives
-  //   progress = scrollTop / (scrollHeight - clientHeight)
-  // but scaleY maps onto the FULL timeline height, so the axis would run
-  // ahead of the sticky icon. The correct value is:
-  //   scrollTop / scrollHeight
-  // which is "how far down the total content is the top of the viewport."
-  // We derive this directly from the DOM on each scroll event.
-  const containerProgress = useMotionValue(0);
-  useEffect(() => {
-    const el = scrollContainer?.current;
-    if (!el) return;
-    const onScroll = () => containerProgress.set(el.scrollTop / el.scrollHeight);
-    onScroll(); // seed initial value
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [scrollContainer, containerProgress]);
-
-  const scrollYProgress = scrollContainer ? containerProgress : viewportProgress;
+  // Same useScroll mechanism for both modes — just different offset end-points.
+  //
+  // Viewport:  axis fills as the timeline scrolls through the stickyOffset line.
+  //            "end {stickyOffset}px" works because the page can scroll the
+  //            timeline bottom past that point.
+  //
+  // Container: the timeline bottom can only reach the container bottom, so
+  //            "end end" = progress 1 when fully scrolled.
+  const { scrollYProgress } = useScroll(
+    scrollContainer
+      ? {
+          target: containerRef,
+          container: scrollContainer,
+          offset: [`start ${stickyOffset}px`, "end end"],
+        }
+      : {
+          target: containerRef,
+          offset: [`start ${stickyOffset}px`, `end ${stickyOffset}px`],
+        }
+  );
 
   // Center the axis line on the icon column (half of icon width from left).
   const axisLeft = iconSize / 2;
