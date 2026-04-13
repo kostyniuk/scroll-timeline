@@ -1,7 +1,8 @@
 "use client";
 
 import { motion, useScroll } from "motion/react";
-import React, { useRef, type CSSProperties, type ReactNode } from "react";
+import React, { useRef, type RefObject, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Item, ItemContent, ItemTitle, ItemDescription } from "@/components/ui/item";
 import {
@@ -26,7 +27,7 @@ export type TimelineItem = {
   period?: string;
   /** Primary heading */
   title: string;
-  /** Secondary line below the title (maps to "company" in portfolio) */
+  /** Secondary line below the title (e.g. company name) */
   subtitle?: string;
   /** Longer body text */
   description?: string;
@@ -36,35 +37,34 @@ export type TimelineItem = {
   tags?: string[];
   /** Shows a live indicator badge next to the title */
   isCurrent?: boolean;
-  /** Collapsible extra sections (bullet points, text blocks, etc.) */
+  /** Collapsible extra sections — bullet lists, text blocks, etc. */
   additionalContent?: TimelineSectionData[];
-  /** Whether the collapsible is open by default */
+  /** Whether the collapsible is open by default. First item defaults to true. */
   defaultExpanded?: boolean;
 };
 
 export type TimelineProps = {
   items: TimelineItem[];
   /**
-   * Pin each item's icon at `stickyOffset` while the user reads through
-   * the item's content. Powered by CSS `position: sticky`.
+   * Pin each item's icon at `stickyOffset` while the user reads its content.
+   * Powered by CSS `position: sticky`.
    * @default true
    */
   sticky?: boolean;
   /**
    * Render a small dot on the axis instead of a full icon circle.
-   * Useful for minimal / event-style timelines with no icons.
    * @default false
    */
   dot?: boolean;
   /**
-   * CSS color for the axis segment that has already been scrolled past.
-   * Accepts any valid CSS color — hex, hsl(), oklch(), currentColor, etc.
+   * CSS color for the axis segment already scrolled past.
+   * Accepts any valid CSS color — hex, hsl(), oklch(), CSS variables.
    * @default "currentColor"
    */
   coveredColor?: string;
   /**
    * CSS color for the axis segment not yet reached.
-   * Defaults to `coveredColor` at 18% opacity via `color-mix`.
+   * Defaults to 18% opacity of coveredColor via color-mix().
    */
   uncoveredColor?: string;
   /**
@@ -73,15 +73,22 @@ export type TimelineProps = {
    */
   lineWidth?: number;
   /**
-   * Distance from the viewport top where icons stick.
+   * Viewport distance from the top where icons stick and where scroll
+   * progress starts/ends. Match this to your sticky header height.
    * @default 80
    */
   stickyOffset?: number;
   /**
-   * Diameter of the icon circle in pixels.
+   * Diameter of the icon circle in pixels. The axis auto-centers on it.
    * @default 24
    */
   iconSize?: number;
+  /**
+   * Ref to a scrollable container. When provided, scroll progress tracks
+   * that element instead of the viewport — use this when the Timeline
+   * lives inside a fixed-height overflow-y-auto div.
+   */
+  scrollContainer?: RefObject<HTMLElement | null>;
   className?: string;
 };
 
@@ -118,7 +125,7 @@ function TimelineSections({
   className?: string;
 }) {
   return (
-    <div className={`flex flex-col gap-4${className ? ` ${className}` : ""}`}>
+    <div className={cn("flex flex-col gap-4", className)}>
       {sections.map((section, index) => (
         <TimelineSection
           key={`${index}-${section.title ?? "section"}`}
@@ -140,54 +147,49 @@ export function Timeline({
   lineWidth = 2,
   stickyOffset = 80,
   iconSize = 24,
+  scrollContainer,
   className,
 }: TimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: [`start ${stickyOffset}px`, `end ${stickyOffset}px`],
-  });
+  // When a scrollContainer ref is provided, track that element's scroll.
+  // Otherwise track the container's position through the viewport.
+  const { scrollYProgress } = useScroll(
+    scrollContainer
+      ? { container: scrollContainer }
+      : {
+          target: containerRef,
+          offset: [`start ${stickyOffset}px`, `end ${stickyOffset}px`],
+        }
+  );
 
-  // Center the axis on the icon column.
+  // Center the axis line on the icon column (half of icon width from left).
   const axisLeft = iconSize / 2;
 
   const resolvedUncoveredColor =
     uncoveredColor ?? `color-mix(in srgb, ${coveredColor} 18%, transparent)`;
 
-  // Shared absolute positioning — layout done via inline styles,
-  // not Tailwind, so it works regardless of content scanning.
-  const axisBase: CSSProperties = {
-    position: "absolute",
-    top: 0,
-    left: axisLeft,
-    width: lineWidth,
-    height: "100%",
-    transform: "translateX(-50%)",
-    borderRadius: 9999,
-  };
-
   return (
-    <div
-      ref={containerRef}
-      // Critical layout via inline styles — Tailwind scanning is unreliable
-      // for files outside `app/` depending on the project setup.
-      style={{ position: "relative", display: "flex", flexDirection: "column" }}
-      className={className}
-    >
-      {/* Layer 1 — uncovered axis (always full height) */}
-      <div style={{ ...axisBase, backgroundColor: resolvedUncoveredColor }} />
+    <div ref={containerRef} className={cn("relative flex flex-col", className)}>
 
-      {/* Layer 2 — covered axis (grows from the top as you scroll) */}
-      <motion.div
+      {/* Layer 1 — uncovered axis (always full height) */}
+      <div
+        className="absolute top-0 h-full -translate-x-1/2 rounded-full"
         style={{
-          position: "absolute",
-          top: 0,
           left: axisLeft,
           width: lineWidth,
-          height: "100%",
-          borderRadius: 9999,
+          backgroundColor: resolvedUncoveredColor,
+        }}
+      />
+
+      {/* Layer 2 — covered axis (grows downward as you scroll) */}
+      <motion.div
+        className="absolute top-0 h-full rounded-full"
+        style={{
+          left: axisLeft,
+          width: lineWidth,
           backgroundColor: coveredColor,
+          // motion's x composes with scaleY without clobbering the transform
           x: "-50%",
           scaleY: scrollYProgress,
           originY: 0,
@@ -231,59 +233,45 @@ function TimelineRow({
   coveredColor,
   isExpanded,
 }: TimelineRowProps) {
-  const [openDetailedInformation, setOpenDetailedInformation] =
-    React.useState(isExpanded);
-
+  const [open, setOpen] = React.useState(isExpanded);
   const hasAdditionalContent = Boolean(item.additionalContent?.length);
 
   return (
-    // Inline styles for the row layout — same rationale as the container.
-    <div style={{ display: "flex", gap: "3rem" }}>
+    <div className="flex gap-12">
 
       {/* ── Indicator column ─────────────────────────────────────────
-       * No explicit height or position here — flex's default align-items:stretch
-       * automatically makes this column as tall as the content column, giving
-       * the sticky child enough room to actually stick within it.
+       * shrink-0 keeps it at iconSize width. No explicit height — flex
+       * align-items:stretch (default) automatically matches the content
+       * column height, giving the sticky child room to actually stick.
        */}
-      <div style={{ width: iconSize, flexShrink: 0 }}>
+      <div className="shrink-0" style={{ width: iconSize }}>
         {dot ? (
-          // ── Dot variant ──────────────────────────────────────────
+          // ── Dot variant ────────────────────────────────────────────
           <div
+            className={cn("flex justify-center z-10", sticky && "sticky")}
             style={{
-              display: "flex",
-              justifyContent: "center",
               paddingTop: iconSize / 2 - 4,
-              zIndex: 10,
-              ...(sticky ? { position: "sticky", top: stickyOffset } : {}),
+              ...(sticky ? { top: stickyOffset } : {}),
             }}
           >
             <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                backgroundColor: coveredColor,
-                flexShrink: 0,
-              }}
+              className="size-2 rounded-full shrink-0"
+              style={{ backgroundColor: coveredColor }}
             />
           </div>
         ) : (
-          // ── Icon circle variant ───────────────────────────────────
+          // ── Icon circle variant ─────────────────────────────────────
           <div
+            className={cn(
+              "rounded-full flex items-center justify-center",
+              "text-xs font-bold select-none z-10 text-background",
+              sticky && "sticky"
+            )}
             style={{
               width: iconSize,
               height: iconSize,
               backgroundColor: coveredColor,
-              color: "var(--background)",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "0.75rem",
-              fontWeight: "bold",
-              userSelect: "none",
-              zIndex: 10,
-              ...(sticky ? { position: "sticky", top: stickyOffset } : {}),
+              ...(sticky ? { top: stickyOffset } : {}),
             }}
           >
             {item.icon}
@@ -291,8 +279,8 @@ function TimelineRow({
         )}
       </div>
 
-      {/* ── Content ───────────────────────────────────────────────── */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      {/* ── Content ─────────────────────────────────────────────────── */}
+      <div className="flex-1 min-w-0">
         <Item className="mb-12 last:mb-0">
           <ItemContent>
             {item.period && (
@@ -301,56 +289,40 @@ function TimelineRow({
               </span>
             )}
 
-            <Collapsible
-              open={openDetailedInformation}
-              onOpenChange={setOpenDetailedInformation}
-            >
+            <Collapsible open={open} onOpenChange={setOpen}>
               <ItemTitle className="text-sm">
                 {item.title}
                 {item.isCurrent && (
                   <span className="inline-flex items-center gap-1 font-mono text-[0.6rem] tracking-wide uppercase text-muted-foreground">
-                    <span className="block w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    <span className="block size-1.5 rounded-full bg-green-500 animate-pulse" />
                     now
                   </span>
                 )}
                 {hasAdditionalContent && (
                   <CollapsibleTrigger
-                    render={
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="size-8"
-                      />
-                    }
+                    render={<Button variant="ghost" size="icon-sm" className="size-8" />}
                   >
-                    {openDetailedInformation ? (
-                      <ChevronsDownUp />
-                    ) : (
-                      <ChevronsUpDown />
-                    )}
+                    {open ? <ChevronsDownUp /> : <ChevronsUpDown />}
                     <span className="sr-only">Toggle details</span>
                   </CollapsibleTrigger>
                 )}
               </ItemTitle>
 
-              {item.subtitle ? (
+              {item.subtitle && (
                 <ItemDescription className="font-medium text-foreground">
                   {item.subtitle}
                 </ItemDescription>
-              ) : null}
+              )}
 
-              {item.description ? (
+              {item.description && (
                 <ItemDescription>{item.description}</ItemDescription>
-              ) : null}
+              )}
 
-              {hasAdditionalContent && item.additionalContent ? (
+              {hasAdditionalContent && item.additionalContent && (
                 <CollapsibleContent>
-                  <TimelineSections
-                    sections={item.additionalContent}
-                    className="pt-4"
-                  />
+                  <TimelineSections sections={item.additionalContent} className="pt-4" />
                 </CollapsibleContent>
-              ) : null}
+              )}
 
               {item.tags && item.tags.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-1.5">

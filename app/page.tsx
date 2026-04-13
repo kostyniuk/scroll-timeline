@@ -1,4 +1,5 @@
 import { Timeline, type TimelineItem } from "@/components/timeline";
+import { ScrollableDemo } from "@/components/scrollable-demo";
 import { Card, CardContent } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { ReactNode } from "react";
@@ -241,37 +242,45 @@ export default function Page() {
         </section>
 
         {/* ═══════════════════════════════════════════════════════════════
-            Demo 1 — sticky icons (default)
+            Demo 1 — fixed-height scrollable container
         ═══════════════════════════════════════════════════════════════ */}
         <Demo
-          label="example / sticky icons"
-          title="Sticky icons"
-          description="Icons pin at stickyOffset from the viewport top as you scroll through each entry. You always know which item you're reading — perfect for long-form content like timelines and experiences."
-          code={`<Timeline
-  items={careerItems}
-  sticky
-  coveredColor="var(--foreground)"
-  stickyOffset={80}
-/>`}
+          label="example / scrollable container"
+          title="Fixed-height scrollable container"
+          description="Pass a scrollContainer ref to track a scoped overflow-y-auto div instead of the page. The two-color axis and sticky icons both react to that container's scroll — ideal for sidebars, modals, or any timeline that lives inside a bounded area."
+          code={`const scrollRef = useRef<HTMLDivElement>(null);
+
+<div ref={scrollRef} className="h-[480px] overflow-y-auto">
+  <Timeline
+    items={items}
+    sticky
+    stickyOffset={0}
+    coveredColor="var(--foreground)"
+    scrollContainer={scrollRef}
+  />
+</div>`}
         >
-          <Timeline items={CAREER} sticky stickyOffset={80} coveredColor="var(--foreground)" />
+          <ScrollableDemo items={CAREER} coveredColor="var(--foreground)" stickyOffset={0} />
         </Demo>
 
         {/* ═══════════════════════════════════════════════════════════════
-            Demo 2 — dot variant
+            Demo 2 — no sticky
         ═══════════════════════════════════════════════════════════════ */}
         <Demo
-          label="example / dot variant"
-          title="Dot variant"
-          description="Set dot={true} to replace icon circles with small dots. No icon content is rendered — just a 8px position marker on the axis. Great for minimal, dense timelines."
+          label="example / no sticky"
+          title="Without sticky icons"
+          description="Set sticky={false} to let icons scroll naturally with the content. The two-color axis still tracks progress — it's the scroll-driven core of the component, completely independent of sticky."
           code={`<Timeline
-  items={milestones}
-  dot
-  sticky
+  items={items}
+  sticky={false}
   coveredColor="var(--foreground)"
 />`}
         >
-          <Timeline items={MILESTONES} dot sticky coveredColor="var(--foreground)" stickyOffset={80} />
+          <Card className="overflow-visible">
+            <CardContent className="px-6 sm:px-10 py-6 sm:py-8">
+              <Timeline items={CAREER} sticky={false} coveredColor="var(--foreground)" stickyOffset={80} />
+            </CardContent>
+          </Card>
         </Demo>
 
         {/* ═══════════════════════════════════════════════════════════════
@@ -280,21 +289,25 @@ export default function Page() {
         <Demo
           label="example / custom colors"
           title="Custom axis colors"
-          description="coveredColor and uncoveredColor accept any CSS color. Use hex, hsl(), oklch(), or CSS variables. uncoveredColor auto-derives from coveredColor if omitted."
+          description="coveredColor and uncoveredColor accept any CSS color — hex, hsl(), oklch(), CSS variables. uncoveredColor auto-derives as 18% of coveredColor when omitted."
           code={`<Timeline
-  items={releaseNotes}
+  items={items}
   sticky
   coveredColor="oklch(0.55 0.18 145)"
   uncoveredColor="oklch(0.85 0.08 145)"
 />`}
         >
-          <Timeline
-            items={RELEASES}
-            sticky
-            coveredColor="oklch(0.55 0.18 145)"
-            uncoveredColor="oklch(0.85 0.08 145)"
-            stickyOffset={80}
-          />
+          <Card className="overflow-visible">
+            <CardContent className="px-6 sm:px-10 py-6 sm:py-8">
+              <Timeline
+                items={RELEASES}
+                sticky
+                coveredColor="oklch(0.55 0.18 145)"
+                uncoveredColor="oklch(0.85 0.08 145)"
+                stickyOffset={80}
+              />
+            </CardContent>
+          </Card>
         </Demo>
 
         {/* ─── Props reference ──────────────────────────────────────── */}
@@ -398,12 +411,8 @@ function Demo({
         {code}
       </pre>
 
-      {/* Live component — overflow-visible so sticky icons aren't clipped */}
-      <Card className="overflow-visible">
-        <CardContent className="px-6 sm:px-10 py-6 sm:py-10">
-          {children}
-        </CardContent>
-      </Card>
+      {/* Live component */}
+      {children}
     </section>
   );
 }
@@ -434,13 +443,14 @@ function SectionLabel({
 
 const PROPS = [
   { name: "items", type: "TimelineItem[]", default: "—", description: "Array of timeline entries to render. Only title is required on each item." },
-  { name: "sticky", type: "boolean", default: "true", description: "Pin each icon at stickyOffset from the viewport top while the user reads through the entry." },
-  { name: "dot", type: "boolean", default: "false", description: "Render a small 8 px dot instead of the icon circle. icon on items is ignored." },
+  { name: "sticky", type: "boolean", default: "true", description: "Pin each icon at stickyOffset while scrolling through an entry. Uses CSS position: sticky." },
+  { name: "dot", type: "boolean", default: "false", description: "Render a small 8 px dot instead of a full icon circle. The icon field on items is ignored." },
   { name: "coveredColor", type: "string", default: '"currentColor"', description: "CSS color for the axis segment already scrolled past. Accepts hex, hsl(), oklch(), CSS variables." },
   { name: "uncoveredColor", type: "string", default: "18% of coveredColor", description: "CSS color for the future axis segment. Derived automatically if omitted." },
   { name: "lineWidth", type: "number", default: "2", description: "Width of the axis line in pixels." },
-  { name: "stickyOffset", type: "number", default: "80", description: "Distance in px from the viewport top where icons stick. Match this to your sticky header height." },
+  { name: "stickyOffset", type: "number", default: "80", description: "Viewport distance where icons stick and where progress starts/ends. Match to your header height." },
   { name: "iconSize", type: "number", default: "24", description: "Diameter of the icon circle in pixels. The axis auto-centers on the icon column." },
+  { name: "scrollContainer", type: "RefObject<HTMLElement>", default: "—", description: "Ref to a scrollable container. When provided, scroll progress tracks that element instead of the viewport." },
   { name: "className", type: "string", default: "—", description: "Extra class names applied to the timeline root element." },
 ];
 
