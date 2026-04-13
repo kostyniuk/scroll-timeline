@@ -240,16 +240,12 @@ function TimelineRow({
     // Inline styles for the row layout — same rationale as the container.
     <div style={{ display: "flex", gap: "3rem" }}>
 
-      {/* ── Indicator column ──────────────────────────────────────── */}
-      <div
-        style={{
-          width: iconSize,
-          flexShrink: 0,
-          position: "relative",
-          zIndex: 10,
-          height: "100%",
-        }}
-      >
+      {/* ── Indicator column ─────────────────────────────────────────
+       * No explicit height or position here — flex's default align-items:stretch
+       * automatically makes this column as tall as the content column, giving
+       * the sticky child enough room to actually stick within it.
+       */}
+      <div style={{ width: iconSize, flexShrink: 0 }}>
         {dot ? (
           // ── Dot variant ──────────────────────────────────────────
           <div
@@ -257,9 +253,8 @@ function TimelineRow({
               display: "flex",
               justifyContent: "center",
               paddingTop: iconSize / 2 - 4,
-              ...(sticky
-                ? { position: "sticky", top: stickyOffset }
-                : {}),
+              zIndex: 10,
+              ...(sticky ? { position: "sticky", top: stickyOffset } : {}),
             }}
           >
             <div
@@ -287,9 +282,8 @@ function TimelineRow({
               fontSize: "0.75rem",
               fontWeight: "bold",
               userSelect: "none",
-              ...(sticky
-                ? { position: "sticky", top: stickyOffset }
-                : { position: "relative" }),
+              zIndex: 10,
+              ...(sticky ? { position: "sticky", top: stickyOffset } : {}),
             }}
           >
             {item.icon}
