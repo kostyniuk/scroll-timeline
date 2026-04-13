@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Scroll Timeline
 
-## Getting Started
+A scroll-driven React timeline component with a two-color axis — one color for the path already covered, another for the path ahead. Optionally pins each item's icon as you scroll through its content.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Scroll-driven two-color axis** — powered by `motion`'s `useScroll`, zero re-renders
+- **Sticky icons** — each icon pins at a configurable viewport offset while you read the entry
+- **Fully configurable** — colors, line width, icon size, sticky offset
+- **TypeScript** — complete type definitions included
+- **Tailwind CSS** — styling via utility classes, easy to override
+
+## Usage
+
+Copy `components/timeline.tsx` into your project, then:
+
+```tsx
+import { Timeline } from "@/components/timeline";
+
+<Timeline
+  items={[
+    {
+      period: "2024 — Present",
+      title: "Engineering Lead",
+      subtitle: "Acme Corp",
+      description: "...",
+      tags: ["React", "TypeScript"],
+      icon: "A",
+      isCurrent: true,
+    },
+  ]}
+  sticky
+  coveredColor="var(--foreground)"
+  stickyOffset={80}
+/>
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Props
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `items` | `TimelineItem[]` | — | Array of timeline entries |
+| `sticky` | `boolean` | `true` | Pin icons at `stickyOffset` while scrolling |
+| `coveredColor` | `string` | `"currentColor"` | CSS color for the scrolled-past axis segment |
+| `uncoveredColor` | `string` | 18% of `coveredColor` | CSS color for the future axis segment |
+| `lineWidth` | `number` | `2` | Axis line width in pixels |
+| `stickyOffset` | `number` | `80` | Viewport top distance where icons stick (px) |
+| `iconSize` | `number` | `24` | Icon circle diameter in pixels |
+| `className` | `string` | — | Extra class names on the root element |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Dependencies
 
-## Learn More
+- [motion](https://motion.dev) — for `useScroll` and scroll-driven animation
+- [Tailwind CSS v4](https://tailwindcss.com)
 
-To learn more about Next.js, take a look at the following resources:
+## License
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
