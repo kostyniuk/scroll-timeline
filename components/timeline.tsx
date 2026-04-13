@@ -1,7 +1,7 @@
 "use client";
 
-import { motion, useScroll } from "motion/react";
-import React, { useRef, type RefObject, type ReactNode } from "react";
+import { motion, useMotionValue, useScroll } from "motion/react";
+import React, { useEffect, useRef, type RefObject, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Item, ItemContent, ItemTitle, ItemDescription } from "@/components/ui/item";
@@ -152,16 +152,31 @@ export function Timeline({
 }: TimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // When a scrollContainer ref is provided, track that element's scroll.
-  // Otherwise track the container's position through the viewport.
-  const { scrollYProgress } = useScroll(
-    scrollContainer
-      ? { container: scrollContainer }
-      : {
-          target: containerRef,
-          offset: [`start ${stickyOffset}px`, `end ${stickyOffset}px`],
-        }
-  );
+  // Viewport mode: useScroll tracks when the timeline container passes
+  // through stickyOffset px from the top — progress matches icon position.
+  const { scrollYProgress: viewportProgress } = useScroll({
+    target: containerRef,
+    offset: [`start ${stickyOffset}px`, `end ${stickyOffset}px`],
+  });
+
+  // Scrollable-container mode: useScroll({ container }) gives
+  //   progress = scrollTop / (scrollHeight - clientHeight)
+  // but scaleY maps onto the FULL timeline height, so the axis would run
+  // ahead of the sticky icon. The correct value is:
+  //   scrollTop / scrollHeight
+  // which is "how far down the total content is the top of the viewport."
+  // We derive this directly from the DOM on each scroll event.
+  const containerProgress = useMotionValue(0);
+  useEffect(() => {
+    const el = scrollContainer?.current;
+    if (!el) return;
+    const onScroll = () => containerProgress.set(el.scrollTop / el.scrollHeight);
+    onScroll(); // seed initial value
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [scrollContainer, containerProgress]);
+
+  const scrollYProgress = scrollContainer ? containerProgress : viewportProgress;
 
   // Center the axis line on the icon column (half of icon width from left).
   const axisLeft = iconSize / 2;
